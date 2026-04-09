@@ -57,6 +57,12 @@
   .btn-ghost{background:none;color:var(--gray1);border:1px solid var(--border2);padding:12px 24px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color 0.2s,color 0.2s;}
   .btn-ghost:hover{border-color:var(--gray1);color:var(--white);}
   .btn-row{display:flex;gap:12px;margin-top:2rem;padding-bottom:3rem;align-items:center;flex-wrap:wrap;}
+  .generated-link{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:1rem 1.1rem;margin-top:1rem;display:none;}
+  .generated-link.active{display:block;}
+  .generated-link-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--red);margin-bottom:0.6rem;}
+  .generated-link-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .generated-link-input{flex:1;min-width:240px;background:var(--dark);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;color:var(--gray1);font-size:13px;font-family:'DM Mono',monospace;word-break:break-all;}
+  .generated-link-note{font-size:12px;color:var(--gray2);margin-top:0.6rem;}
   .invitee-banner{background:var(--card);border:1px solid var(--border2);border-left:3px solid var(--red);border-radius:8px;padding:1rem 1.25rem;margin-bottom:2rem;}
   .invitee-banner-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--red);margin-bottom:4px;}
   .invitee-banner-text{font-size:14px;color:var(--gray1);}
@@ -189,6 +195,14 @@
     <div class="btn-row">
       <button class="btn-primary" onclick="sendInvites()">Send invites to participants</button>
     </div>
+    <div class="generated-link" id="generated-link-card">
+      <div class="generated-link-label">Invite link</div>
+      <div class="generated-link-row">
+        <div class="generated-link-input" id="generated-link-output"></div>
+        <button class="btn-ghost" type="button" onclick="copyInviteLink()">Copy link</button>
+      </div>
+      <div class="generated-link-note">This link opens straight into the invitee response flow with the meeting details already filled in.</div>
+    </div>
   </div>
 
   <div class="screen" id="screen-2">
@@ -293,6 +307,7 @@
   const DAYS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
   const ROWS=5;
   let selectedVibe='Founding team';
+  let generatedInviteLink='';
 
   function buildGrid(id,interactive){
     const c=document.getElementById(id);
@@ -307,6 +322,67 @@
 
   buildGrid('org-grid',true);
   buildGrid('invitee-grid',true);
+
+  function applyModeFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const title = params.get('title');
+    const vibe = params.get('vibe');
+    const duration = params.get('duration');
+    const start = params.get('start');
+    const end = params.get('end');
+    if(title) document.getElementById('meeting-title').value = title;
+    if(start) document.getElementById('date-start').value = start;
+    if(end) document.getElementById('date-end').value = end;
+    if(duration) document.getElementById('duration').value = duration;
+    if(vibe){
+      const match = Array.from(document.querySelectorAll('.vibe-card')).find(card => card.dataset.vibe === vibe);
+      if(match) selectVibe(match);
+    }
+    updateInviteBanner();
+    if(mode === 'invite'){
+      document.getElementById('nav-mode').textContent='Invitee view';
+      showScreen(2);
+    }
+  }
+
+  function updateInviteBanner(){
+    const title=document.getElementById('meeting-title').value||'Team meeting';
+    const dur=document.getElementById('duration').value;
+    const start=document.getElementById('date-start').value;
+    const end=document.getElementById('date-end').value;
+    document.getElementById('banner-title').textContent=title;
+    document.getElementById('banner-vibe').textContent=selectedVibe;
+    document.getElementById('banner-duration').textContent=dur+' min';
+    const metaBits = [];
+    if(start) metaBits.push(start);
+    if(end && end !== start) metaBits.push(end);
+    if(metaBits.length){
+      document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+metaBits.join(' to ');
+    }
+  }
+
+  function buildInviteLink(){
+    const title=document.getElementById('meeting-title').value||'Team meeting';
+    const dur=document.getElementById('duration').value;
+    const start=document.getElementById('date-start').value;
+    const end=document.getElementById('date-end').value;
+    const url = new URL(window.location.origin + '/core/lettuce-meet');
+    url.searchParams.set('mode','invite');
+    url.searchParams.set('title', title);
+    url.searchParams.set('vibe', selectedVibe);
+    url.searchParams.set('duration', dur);
+    if(start) url.searchParams.set('start', start);
+    if(end) url.searchParams.set('end', end);
+    return url.toString();
+  }
+
+  function copyInviteLink(){
+    if(!generatedInviteLink)return;
+    navigator.clipboard.writeText(generatedInviteLink).then(()=>{
+      alert('Invite link copied.');
+    });
+  }
 
   function selectVibe(el){
     document.querySelectorAll('.vibe-card').forEach(c=>c.classList.remove('selected'));
@@ -328,11 +404,10 @@
   }
 
   function sendInvites(){
-    const title=document.getElementById('meeting-title').value||'Team meeting';
-    const dur=document.getElementById('duration').value;
-    document.getElementById('banner-title').textContent=title;
-    document.getElementById('banner-vibe').textContent=selectedVibe;
-    document.getElementById('banner-duration').textContent=dur+' min';
+    updateInviteBanner();
+    generatedInviteLink = buildInviteLink();
+    document.getElementById('generated-link-output').textContent = generatedInviteLink;
+    document.getElementById('generated-link-card').classList.add('active');
     document.getElementById('nav-mode').textContent='Invitee view';
     showScreen(2);
   }
@@ -358,7 +433,12 @@
     const q5=document.getElementById('q5').value;
 
     document.getElementById('brief-title').textContent=title;
-    document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; April 2026';
+    const start=document.getElementById('date-start').value;
+    const end=document.getElementById('date-end').value;
+    const metaBits = [];
+    if(start) metaBits.push(start);
+    if(end && end !== start) metaBits.push(end);
+    document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+(metaBits.length ? metaBits.join(' to ') : 'April 2026');
     document.getElementById('brief-vibe').textContent=selectedVibe;
 
     const members=[
@@ -438,6 +518,8 @@
     }
     window.scrollTo({top:0,behavior:'smooth'});
   }
+
+  applyModeFromUrl();
 </script>
 </body>
 </html>
