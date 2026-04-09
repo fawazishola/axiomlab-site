@@ -404,6 +404,16 @@
     return timeZone.replaceAll('_',' ');
   }
 
+  function slugifyVibe(vibe){
+    return vibe.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  }
+
+  function vibeFromSlug(slug){
+    if(!slug) return null;
+    const card = Array.from(document.querySelectorAll('.vibe-card')).find(item => slugifyVibe(item.dataset.vibe) === slug);
+    return card ? card.dataset.vibe : null;
+  }
+
   function populateTimeZoneSelects(){
     const options = timeZoneOptions();
     ['timezone-select','brief-timezone-select'].forEach(id=>{
@@ -583,9 +593,11 @@
 
   function applyModeFromUrl(){
     const params = new URLSearchParams(window.location.search);
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const pathSlug = pathParts[1] || '';
     const mode = params.get('mode');
     const title = params.get('title');
-    const vibe = params.get('vibe');
+    const vibe = params.get('vibe') || vibeFromSlug(pathSlug);
     const duration = params.get('duration');
     const start = params.get('start');
     const end = params.get('end');
@@ -641,10 +653,9 @@
     const start=document.getElementById('date-start').value;
     const end=document.getElementById('date-end').value;
     const slots = Array.from(selectedUtcSlots).sort().join(',');
-    const url = new URL(window.location.origin + '/the-commons');
+    const url = new URL(window.location.origin + '/the-commons/' + slugifyVibe(selectedVibe));
     url.searchParams.set('mode','invite');
     url.searchParams.set('title', title);
-    url.searchParams.set('vibe', selectedVibe);
     url.searchParams.set('duration', dur);
     url.searchParams.set('tz', activeTimeZone);
     if(start) url.searchParams.set('start', start);
