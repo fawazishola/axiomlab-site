@@ -113,6 +113,9 @@
   .legend{display:flex;gap:16px;margin-top:1rem;font-size:12px;color:var(--gray2);flex-wrap:wrap;}
   .legend-item{display:flex;align-items:center;gap:6px;}
   .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+  body.invite-mode .progress-bar{display:none;}
+  body.invite-mode .nav-tag{display:none;}
+  body.invite-mode #screen-1{display:none !important;}
   @media (max-width: 720px){
     nav{padding:1rem 1.1rem;gap:0.75rem;align-items:flex-start;flex-direction:column;}
     .progress-bar,.content{padding-left:1rem;padding-right:1rem;}
@@ -207,9 +210,9 @@
 
   <div class="screen" id="screen-2">
     <div class="screen-header">
-      <div class="screen-label">Invitee view - Step 02</div>
-      <h1 class="screen-title">Answer five <em>questions.</em></h1>
-      <p class="screen-sub">Your answers build the social briefing everyone gets before the meeting.</p>
+      <div class="screen-label" id="invitee-label">Core team prompts</div>
+      <h1 class="screen-title">Tell us about <em>Fawaz.</em></h1>
+      <p class="screen-sub">Your responses shape the pre-meeting social briefing shared with the team.</p>
     </div>
     <div class="invitee-banner">
       <div class="invitee-banner-label">You have been invited to</div>
@@ -220,42 +223,36 @@
       <input class="form-input" type="text" id="invitee-name" placeholder="Your full name">
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 01 of 05</div>
-      <div class="prompt-question">What is a weirdly specific thing you love that most people do not notice?</div>
+      <div class="prompt-number">Question 01 of 06</div>
+      <div class="prompt-question">What’s the first word that comes to mind when you think of Fawaz’s energy?</div>
       <textarea class="form-input" id="q1" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 02 of 05</div>
-      <div class="prompt-question">What is your work snack and what does it say about you?</div>
+      <div class="prompt-number">Question 02 of 06</div>
+      <div class="prompt-question">What role does Fawaz naturally play in a room?</div>
       <textarea class="form-input" id="q2" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 03 of 05</div>
-      <div class="prompt-question">What energy do you bring to a room when you are fully switched on?</div>
+      <div class="prompt-number">Question 03 of 06</div>
+      <div class="prompt-question">If Fawaz were a system, object, or machine, what would he be and why?</div>
       <textarea class="form-input" id="q3" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 04 of 05</div>
-      <div class="prompt-question">What is something about you that people consistently get wrong?</div>
+      <div class="prompt-number">Question 04 of 06</div>
+      <div class="prompt-question">What’s one thing Fawaz does that instantly changes the energy of a project?</div>
       <textarea class="form-input" id="q4" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 05 of 05</div>
-      <div class="prompt-question">What are you most excited to figure out right now, inside or outside of work?</div>
+      <div class="prompt-number">Question 05 of 06</div>
+      <div class="prompt-question">What’s something people might misunderstand about how Fawaz works?</div>
       <textarea class="form-input" id="q5" rows="2" placeholder="Write anything..."></textarea>
     </div>
-    <div class="form-section">
-      <label class="form-label">Your availability - mark when you are free</label>
-      <div class="schedule-section" style="margin-bottom:0;">
-        <div class="time-grid-wrap"><div class="time-grid" id="invitee-grid"></div></div>
-        <div class="legend">
-          <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Free</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--dark);border:1px solid var(--border);"></div> Click to mark free</div>
-        </div>
-      </div>
+    <div class="prompt-card">
+      <div class="prompt-number">Question 06 of 06</div>
+      <div class="prompt-question">What do you think excites Fawaz the most about Axiom Lab?</div>
+      <textarea class="form-input" id="q6" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="btn-row">
-      <button class="btn-ghost" onclick="showScreen(1)">Back</button>
       <button class="btn-primary" onclick="generateBriefing()">Submit and generate briefing</button>
     </div>
   </div>
@@ -288,12 +285,11 @@
       <div class="agenda-item"><div class="agenda-time">0:10</div><div><div class="agenda-text">Begin</div><div class="agenda-sub">Room is warm. Start the meeting.</div></div></div>
     </div>
     <div class="schedule-section">
-      <div class="insight-label">Combined availability</div>
+      <div class="insight-label">Fawaz's availability</div>
       <div class="time-grid-wrap"><div class="time-grid" id="combined-grid"></div></div>
       <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Everyone free</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#1E2A1E;border:1px solid #2A3A2A;"></div> Some free</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--dark);border:1px solid var(--border);"></div> No one marked free</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Available</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--dark);border:1px solid var(--border);"></div> Not marked free</div>
       </div>
     </div>
     <div class="btn-row">
@@ -308,6 +304,7 @@
   const ROWS=5;
   let selectedVibe='Founding team';
   let generatedInviteLink='';
+  let inviteMode = false;
 
   function buildGrid(id,interactive){
     const c=document.getElementById(id);
@@ -321,7 +318,6 @@
   }
 
   buildGrid('org-grid',true);
-  buildGrid('invitee-grid',true);
 
   function applyModeFromUrl(){
     const params = new URLSearchParams(window.location.search);
@@ -331,6 +327,7 @@
     const duration = params.get('duration');
     const start = params.get('start');
     const end = params.get('end');
+    const avail = params.get('avail');
     if(title) document.getElementById('meeting-title').value = title;
     if(start) document.getElementById('date-start').value = start;
     if(end) document.getElementById('date-end').value = end;
@@ -339,8 +336,16 @@
       const match = Array.from(document.querySelectorAll('.vibe-card')).find(card => card.dataset.vibe === vibe);
       if(match) selectVibe(match);
     }
+    if(avail){
+      avail.split(',').filter(Boolean).forEach(idx=>{
+        const slot = document.querySelector(`#org-grid .time-slot[data-idx="${idx}"]`);
+        if(slot) slot.classList.add('selected');
+      });
+    }
     updateInviteBanner();
     if(mode === 'invite'){
+      inviteMode = true;
+      document.body.classList.add('invite-mode');
       document.getElementById('nav-mode').textContent='Invitee view';
       showScreen(2);
     }
@@ -367,6 +372,7 @@
     const dur=document.getElementById('duration').value;
     const start=document.getElementById('date-start').value;
     const end=document.getElementById('date-end').value;
+    const avail = Array.from(document.querySelectorAll('#org-grid .time-slot.selected')).map(slot => slot.dataset.idx).join(',');
     const url = new URL(window.location.origin + '/the-commons');
     url.searchParams.set('mode','invite');
     url.searchParams.set('title', title);
@@ -374,6 +380,7 @@
     url.searchParams.set('duration', dur);
     if(start) url.searchParams.set('start', start);
     if(end) url.searchParams.set('end', end);
+    if(avail) url.searchParams.set('avail', avail);
     return url.toString();
   }
 
@@ -408,8 +415,7 @@
     generatedInviteLink = buildInviteLink();
     document.getElementById('generated-link-output').textContent = generatedInviteLink;
     document.getElementById('generated-link-card').classList.add('active');
-    document.getElementById('nav-mode').textContent='Invitee view';
-    showScreen(2);
+    document.getElementById('nav-mode').textContent='Organizer view';
   }
 
   function getInitials(name){
@@ -431,6 +437,7 @@
     const q3=document.getElementById('q3').value;
     const q4=document.getElementById('q4').value;
     const q5=document.getElementById('q5').value;
+    const q6=document.getElementById('q6').value;
 
     document.getElementById('brief-title').textContent=title;
     const start=document.getElementById('date-start').value;
@@ -443,22 +450,22 @@
 
     const members=[
       {name,role:'You - just submitted',facts:[
-        {label:'loves',val:trunc(q1,60)},
-        {label:'snack',val:trunc(q2,60)},
-        {label:'energy',val:trunc(q3,60)},
-        {label:'excited',val:trunc(q5,60)}
+        {label:'energy',val:trunc(q1,60)},
+        {label:'role',val:trunc(q2,60)},
+        {label:'system',val:trunc(q3,60)},
+        {label:'excited',val:trunc(q6,60)}
       ]},
       {name:'Teammate A',role:'Pending response',facts:[
-        {label:'loves',val:'The smell of old math textbooks'},
-        {label:'snack',val:'Almonds, always almonds'},
-        {label:'energy',val:'Questions first, answers second'},
-        {label:'excited',val:'Whether LLMs can reason from first principles'}
+        {label:'energy',val:'Magnetic'},
+        {label:'role',val:'Architect and catalyst'},
+        {label:'system',val:'A compiler wired into a launch sequence'},
+        {label:'excited',val:'Making impossible systems real'}
       ]},
       {name:'Teammate B',role:'Pending response',facts:[
-        {label:'loves',val:'Watching compilers fail in new ways'},
-        {label:'snack',val:'Green tea, not coffee, never coffee'},
-        {label:'energy',val:'Quietly fixes things before anyone notices'},
-        {label:'excited',val:'The moment a scheduler proof converges'}
+        {label:'energy',val:'Intense'},
+        {label:'role',val:'System-setter'},
+        {label:'system',val:'A control tower with a research engine'},
+        {label:'excited',val:'Building the full stack for verifiable intelligence'}
       ]}
     ];
 
@@ -469,15 +476,15 @@
     });
 
     document.getElementById('convo-starters').innerHTML=[
-      q5?`"${trunc(q5,60)}" - what brought you here?`:'What is the one problem you could not stop thinking about this week?',
-      'If this group could only solve one thing together, what would it be?',
-      'What is the thing you are most afraid to be wrong about?'
+      q1?`"${trunc(q1,60)}" - where does that energy come from?`:'What is the first word that comes to mind when you think of Fawaz?',
+      q3?`"${trunc(q3,60)}" - why that system or machine?`:'If Fawaz were a machine, what would he be and why?',
+      q6?`"${trunc(q6,60)}" - what part of Axiom Lab do you think drives him most?`:'What do you think excites Fawaz most about Axiom Lab?'
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
     document.getElementById('icebreakers').innerHTML=[
-      q1?`Compare weird loves - someone said: "${trunc(q1,55)}"`:'Share one weirdly specific thing you love',
-      q3?`Energy check - someone said: "${trunc(q3,55)}"`:'One word each for the energy you are bringing',
-      'What is something you have been quietly fixing for months?'
+      q2?`Role check - someone said Fawaz is naturally "${trunc(q2,55)}"`:'What role does Fawaz naturally play in a room?',
+      q4?`Energy shift - someone noticed "${trunc(q4,55)}"`:'What does he do that changes the energy of a project?',
+      q5?`Misreadings - someone said people misunderstand "${trunc(q5,55)}"`:'What do people misunderstand about how Fawaz works?'
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
     document.getElementById('chem-bars').innerHTML=[
@@ -487,20 +494,17 @@
     ].map(c=>`<div class="chem-bar"><span class="chem-label">${c.label}</span><div class="chem-track"><div class="chem-fill" style="width:${c.val}%"></div></div><span class="chem-val">${c.val}%</span></div>`).join('');
 
     document.getElementById('ask-each-other').innerHTML=[
-      q4?`Ask ${name}: "${trunc(q4,55)}" - what is the real story?`:`Ask ${name} what people always get wrong about them`,
-      'Ask Teammate A why they switched from physics to CS',
-      'Ask Teammate B about the strangest bug they have ever shipped'
+      q5?`Ask ${name}: "${trunc(q5,55)}" - what do people get wrong there?`:`Ask ${name} what people misunderstand about how Fawaz works`,
+      q2?`Ask ${name} why they chose "${trunc(q2,30)}" as Fawaz's natural role`:`Ask ${name} what role Fawaz naturally plays in a room`,
+      q6?`Ask ${name} what in Axiom Lab feels most alive to Fawaz`:`Ask ${name} what excites Fawaz most about Axiom Lab`
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
     buildGrid('combined-grid',false);
     const orgSlots=document.querySelectorAll('#org-grid .time-slot');
-    const invSlots=document.querySelectorAll('#invitee-grid .time-slot');
     const combSlots=document.querySelectorAll('#combined-grid .time-slot');
     combSlots.forEach((slot,i)=>{
       const oF=orgSlots[i]&&orgSlots[i].classList.contains('selected');
-      const iF=invSlots[i]&&invSlots[i].classList.contains('selected');
-      if(oF&&iF)slot.classList.add('selected');
-      else if(oF||iF)slot.classList.add('partial');
+      if(oF)slot.classList.add('selected');
     });
 
     document.getElementById('nav-mode').textContent='Briefing ready';
