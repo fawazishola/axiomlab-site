@@ -107,15 +107,14 @@
   .schedule-summary{font-size:12px;color:var(--gray2);}
   .timezone-wrap{min-width:260px;max-width:360px;flex:1;}
   .time-grid-wrap{overflow-x:auto;}
-  .schedule-shell{display:grid;grid-template-columns:78px minmax(720px,1fr);gap:8px;min-width:798px;}
-  .time-axis{display:grid;grid-template-rows:44px repeat(30,34px);gap:5px;}
-  .axis-spacer{border-bottom:1px solid var(--border);}
-  .time-label{display:flex;align-items:center;justify-content:flex-end;padding-right:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gray2);}
-  .time-grid{display:grid;grid-template-columns:repeat(7,minmax(96px,1fr));grid-template-rows:44px repeat(30,34px);gap:5px;}
-  .tg-header{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center;}
+  .schedule-table{width:100%;min-width:860px;border-collapse:separate;border-spacing:5px;table-layout:fixed;}
+  .schedule-table th,.schedule-table td{padding:0;}
+  .tg-header{background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center;}
   .tg-day{font-size:10px;color:var(--gray2);font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;}
   .tg-date{font-size:13px;color:var(--white);margin-top:2px;}
-  .time-slot{height:auto;border-radius:4px;background:var(--dark);border:1px solid var(--border);cursor:pointer;transition:background 0.12s,border-color 0.12s;}
+  .time-axis-cell{width:84px;padding-right:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gray2);text-align:right;vertical-align:middle;white-space:nowrap;}
+  .slot-cell{width:calc((100% - 84px) / 7);}
+  .time-slot{display:block;width:100%;height:32px;border-radius:4px;background:var(--dark);border:1px solid var(--border);cursor:pointer;transition:background 0.12s,border-color 0.12s;appearance:none;}
   .time-slot:hover{background:var(--border2);border-color:var(--gray3);}
   .time-slot.selected{background:var(--green);border-color:var(--green);}
   .time-slot.conflict{background:var(--red-dim);border-color:var(--red);cursor:default;}
@@ -131,9 +130,9 @@
     .progress-bar,.content{padding-left:1rem;padding-right:1rem;}
     .form-row,.two-col{grid-template-columns:1fr;}
     .briefing-header{flex-direction:column;}
-    .schedule-shell{grid-template-columns:64px minmax(640px,1fr);min-width:704px;}
-    .time-axis{grid-template-rows:44px repeat(30,30px);}
-    .time-grid{grid-template-rows:44px repeat(30,30px);}
+    .schedule-table{min-width:720px;}
+    .time-axis-cell{width:70px;font-size:10px;}
+    .time-slot{height:28px;}
   }
 </style>
 </head>
@@ -498,42 +497,41 @@
     const container = document.getElementById(id);
     currentScheduleDates = getScheduleDates(activeTimeZone);
     updateRangeInputs();
+    const table = document.createElement('table');
+    table.className = 'schedule-table';
 
-    const shell = document.createElement('div');
-    shell.className = 'schedule-shell';
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    const emptyHead = document.createElement('th');
+    emptyHead.className = 'time-axis-cell';
+    headRow.appendChild(emptyHead);
+    currentScheduleDates.forEach(dayInfo => {
+      const th = document.createElement('th');
+      th.innerHTML = `<div class="tg-header"><div class="tg-day">${dayInfo.weekday}</div><div class="tg-date">${dayInfo.monthLabel} ${dayInfo.day}</div></div>`;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
 
-    const axis = document.createElement('div');
-    axis.className = 'time-axis';
-    const spacer = document.createElement('div');
-    spacer.className = 'axis-spacer';
-    axis.appendChild(spacer);
-
+    const tbody = document.createElement('tbody');
     for(let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++){
       const totalMinutes = SLOT_START_HOUR * 60 + slotIndex * SLOT_INTERVAL_MINUTES;
-      const label = document.createElement('div');
-      label.className = 'time-label';
-      label.textContent = formatTimeLabel(Math.floor(totalMinutes / 60), totalMinutes % 60);
-      axis.appendChild(label);
-    }
+      const hour = Math.floor(totalMinutes / 60);
+      const minute = totalMinutes % 60;
+      const row = document.createElement('tr');
 
-    const board = document.createElement('div');
-    board.className = 'time-grid';
+      const labelCell = document.createElement('td');
+      labelCell.className = 'time-axis-cell';
+      labelCell.textContent = formatTimeLabel(hour, minute);
+      row.appendChild(labelCell);
 
-    currentScheduleDates.forEach(dayInfo => {
-      const header = document.createElement('div');
-      header.className = 'tg-header';
-      header.innerHTML = `<div class="tg-day">${dayInfo.weekday}</div><div class="tg-date">${dayInfo.monthLabel} ${dayInfo.day}</div>`;
-      board.appendChild(header);
-    });
-
-    currentScheduleDates.forEach(dayInfo => {
-      for(let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++){
-        const totalMinutes = SLOT_START_HOUR * 60 + slotIndex * SLOT_INTERVAL_MINUTES;
-        const hour = Math.floor(totalMinutes / 60);
-        const minute = totalMinutes % 60;
+      currentScheduleDates.forEach(dayInfo => {
         const utcDate = zonedDateTimeToUtc(dayInfo.year, dayInfo.month, dayInfo.day, hour, minute, activeTimeZone);
         const iso = utcDate.toISOString();
-        const slot = document.createElement('div');
+        const td = document.createElement('td');
+        td.className = 'slot-cell';
+        const slot = document.createElement('button');
+        slot.type = 'button';
         slot.className = 'time-slot';
         slot.dataset.utc = iso;
         slot.title = `${dayInfo.weekday} ${dayInfo.monthLabel} ${dayInfo.day} · ${formatTimeLabel(hour, minute)} (${labelForTimeZone(activeTimeZone)})`;
@@ -550,15 +548,18 @@
               this.classList.add('selected');
             }
           };
+        } else {
+          slot.disabled = true;
         }
-        board.appendChild(slot);
-      }
-    });
+        td.appendChild(slot);
+        row.appendChild(td);
+      });
 
-    shell.appendChild(axis);
-    shell.appendChild(board);
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
     container.innerHTML = '';
-    container.appendChild(shell);
+    container.appendChild(table);
   }
 
   function setActiveTimeZone(nextTimeZone){
