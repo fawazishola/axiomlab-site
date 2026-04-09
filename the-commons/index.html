@@ -101,11 +101,21 @@
   .agenda-time{font-family:'DM Mono',monospace;font-size:12px;color:var(--red);min-width:42px;padding-top:2px;}
   .agenda-text{font-size:14px;color:var(--white);}
   .agenda-sub{font-size:12px;color:var(--gray2);margin-top:2px;}
+  .form-hint{margin-top:0.55rem;font-size:12px;color:var(--gray2);}
   .schedule-section{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;margin-bottom:2rem;}
+  .schedule-toolbar{display:flex;align-items:end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .schedule-summary{font-size:12px;color:var(--gray2);}
+  .timezone-wrap{min-width:260px;max-width:360px;flex:1;}
   .time-grid-wrap{overflow-x:auto;}
-  .time-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;min-width:400px;}
-  .tg-header{font-size:10px;color:var(--gray2);text-align:center;font-family:'DM Mono',monospace;letter-spacing:0.08em;padding-bottom:4px;}
-  .time-slot{height:26px;border-radius:3px;background:var(--dark);border:1px solid var(--border);cursor:pointer;transition:background 0.12s,border-color 0.12s;}
+  .schedule-shell{display:grid;grid-template-columns:78px minmax(720px,1fr);gap:8px;min-width:798px;}
+  .time-axis{display:grid;grid-template-rows:44px repeat(30,34px);gap:5px;}
+  .axis-spacer{border-bottom:1px solid var(--border);}
+  .time-label{display:flex;align-items:center;justify-content:flex-end;padding-right:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gray2);}
+  .time-grid{display:grid;grid-template-columns:repeat(7,minmax(96px,1fr));grid-template-rows:44px repeat(30,34px);gap:5px;}
+  .tg-header{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center;}
+  .tg-day{font-size:10px;color:var(--gray2);font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;}
+  .tg-date{font-size:13px;color:var(--white);margin-top:2px;}
+  .time-slot{height:auto;border-radius:4px;background:var(--dark);border:1px solid var(--border);cursor:pointer;transition:background 0.12s,border-color 0.12s;}
   .time-slot:hover{background:var(--border2);border-color:var(--gray3);}
   .time-slot.selected{background:var(--green);border-color:var(--green);}
   .time-slot.conflict{background:var(--red-dim);border-color:var(--red);cursor:default;}
@@ -121,6 +131,9 @@
     .progress-bar,.content{padding-left:1rem;padding-right:1rem;}
     .form-row,.two-col{grid-template-columns:1fr;}
     .briefing-header{flex-direction:column;}
+    .schedule-shell{grid-template-columns:64px minmax(640px,1fr);min-width:704px;}
+    .time-axis{grid-template-rows:44px repeat(30,30px);}
+    .time-grid{grid-template-rows:44px repeat(30,30px);}
   }
 </style>
 </head>
@@ -147,16 +160,8 @@
       <label class="form-label">Meeting title</label>
       <input class="form-input" type="text" id="meeting-title" placeholder="Axiom Lab - founding session">
     </div>
-    <div class="form-row">
-      <div class="form-section">
-        <label class="form-label">Date range start</label>
-        <input class="form-input" type="date" id="date-start">
-      </div>
-      <div class="form-section">
-        <label class="form-label">Date range end</label>
-        <input class="form-input" type="date" id="date-end">
-      </div>
-    </div>
+    <input type="hidden" id="date-start">
+    <input type="hidden" id="date-end">
     <div class="form-section">
       <label class="form-label">Duration</label>
       <select class="form-input" id="duration">
@@ -186,8 +191,16 @@
       <button class="add-participant-btn" onclick="addParticipant()">+ Add participant</button>
     </div>
     <div class="form-section">
-      <label class="form-label">Your availability - mark when you are free</label>
+      <label class="form-label">Your availability - mark when you are free for the next seven days</label>
       <div class="schedule-section" style="margin-bottom:0;">
+        <div class="schedule-toolbar">
+          <div class="timezone-wrap">
+            <label class="form-label" for="timezone-select">Display time zone</label>
+            <select class="form-input" id="timezone-select"></select>
+            <div class="form-hint">Starts tomorrow and shows 9:00 AM to 11:30 PM in 30-minute blocks.</div>
+          </div>
+          <div class="schedule-summary" id="schedule-summary"></div>
+        </div>
         <div class="time-grid-wrap"><div class="time-grid" id="org-grid"></div></div>
         <div class="legend">
           <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Free</div>
@@ -286,6 +299,14 @@
     </div>
     <div class="schedule-section">
       <div class="insight-label">Fawaz's availability</div>
+      <div class="schedule-toolbar">
+        <div class="timezone-wrap">
+          <label class="form-label" for="brief-timezone-select">Viewing time zone</label>
+          <select class="form-input" id="brief-timezone-select"></select>
+          <div class="form-hint">Shown relative to the selected viewer time zone in the same 30-minute schedule window.</div>
+        </div>
+        <div class="schedule-summary" id="brief-schedule-summary"></div>
+      </div>
       <div class="time-grid-wrap"><div class="time-grid" id="combined-grid"></div></div>
       <div class="legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Available</div>
@@ -300,24 +321,227 @@
 
 </div>
 <script>
-  const DAYS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
-  const ROWS=5;
+  const DAY_COUNT = 7;
+  const SLOT_START_HOUR = 9;
+  const SLOT_END_HOUR = 24;
+  const SLOT_INTERVAL_MINUTES = 30;
+  const SLOT_COUNT = ((SLOT_END_HOUR - SLOT_START_HOUR) * 60) / SLOT_INTERVAL_MINUTES;
+  const FALLBACK_TIMEZONES = [
+    'America/Toronto',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Vancouver',
+    'UTC',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Asia/Dubai',
+    'Asia/Kolkata',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Australia/Sydney'
+  ];
   let selectedVibe='Founding team';
   let generatedInviteLink='';
   let inviteMode = false;
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto';
+  let activeTimeZone = browserTimeZone;
+  let currentScheduleDates = [];
+  let selectedUtcSlots = new Set();
 
-  function buildGrid(id,interactive){
-    const c=document.getElementById(id);
-    c.innerHTML='';
-    DAYS.forEach(d=>{const h=document.createElement('div');h.className='tg-header';h.textContent=d;c.appendChild(h);});
-    for(let i=0;i<DAYS.length*ROWS;i++){
-      const s=document.createElement('div');s.className='time-slot';s.dataset.idx=i;
-      if(interactive)s.onclick=function(){this.classList.toggle('selected');};
-      c.appendChild(s);
+  function supportedTimeZones(){
+    if(Intl.supportedValuesOf){
+      return Intl.supportedValuesOf('timeZone');
     }
+    return FALLBACK_TIMEZONES;
   }
 
-  buildGrid('org-grid',true);
+  function timeZoneOptions(){
+    const zones = new Set(FALLBACK_TIMEZONES);
+    zones.add(browserTimeZone);
+    return Array.from(zones).filter(tz=>supportedTimeZones().includes(tz)).sort((a,b)=>a.localeCompare(b));
+  }
+
+  function labelForTimeZone(timeZone){
+    return timeZone.replaceAll('_',' ');
+  }
+
+  function populateTimeZoneSelects(){
+    const options = timeZoneOptions();
+    ['timezone-select','brief-timezone-select'].forEach(id=>{
+      const select = document.getElementById(id);
+      select.innerHTML = options.map(tz=>`<option value="${tz}">${labelForTimeZone(tz)}</option>`).join('');
+      select.value = activeTimeZone;
+      select.onchange = e => setActiveTimeZone(e.target.value);
+    });
+  }
+
+  function formatParts(date, timeZone, extra = {}){
+    const parts = new Intl.DateTimeFormat('en-US',{
+      timeZone,
+      year:'numeric',
+      month:'numeric',
+      day:'numeric',
+      ...extra
+    }).formatToParts(date);
+    return parts.reduce((acc,part)=>{
+      if(part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+  }
+
+  function getTimeZoneDateInfo(date, timeZone){
+    const core = formatParts(date, timeZone, { weekday:'short', month:'short' });
+    return {
+      year: Number(core.year),
+      month: Number(core.month),
+      day: Number(core.day),
+      weekday: core.weekday.toUpperCase(),
+      monthLabel: core.month
+    };
+  }
+
+  function zonedDateTimeToUtc(year, month, day, hour, minute, timeZone){
+    const target = Date.UTC(year, month - 1, day, hour, minute);
+    const refine = (candidate) => {
+      const parts = formatParts(candidate, timeZone, {
+        hour:'2-digit',
+        minute:'2-digit',
+        hour12:false
+      });
+      const asUtc = Date.UTC(
+        Number(parts.year),
+        Number(parts.month) - 1,
+        Number(parts.day),
+        Number(parts.hour),
+        Number(parts.minute)
+      );
+      return new Date(candidate.getTime() - (asUtc - target));
+    };
+    return refine(refine(new Date(target)));
+  }
+
+  function getScheduleDates(timeZone){
+    const today = getTimeZoneDateInfo(new Date(), timeZone);
+    const anchor = new Date(Date.UTC(today.year, today.month - 1, today.day + 1, 12));
+    return Array.from({length: DAY_COUNT}, (_, index) => {
+      const date = new Date(anchor.getTime() + index * 86400000);
+      return getTimeZoneDateInfo(date, timeZone);
+    });
+  }
+
+  function formatTimeLabel(hour, minute){
+    const local = new Date(Date.UTC(2026, 0, 1, hour, minute));
+    return new Intl.DateTimeFormat('en-US',{
+      hour:'numeric',
+      minute:'2-digit'
+    }).format(local);
+  }
+
+  function scheduleRangeLabel(){
+    if(!currentScheduleDates.length) return '';
+    const first = currentScheduleDates[0];
+    const last = currentScheduleDates[currentScheduleDates.length - 1];
+    return `${first.weekday}, ${first.monthLabel} ${first.day} to ${last.weekday}, ${last.monthLabel} ${last.day}`;
+  }
+
+  function updateRangeInputs(){
+    if(!currentScheduleDates.length) return;
+    const first = currentScheduleDates[0];
+    const last = currentScheduleDates[currentScheduleDates.length - 1];
+    document.getElementById('date-start').value = `${first.year}-${String(first.month).padStart(2,'0')}-${String(first.day).padStart(2,'0')}`;
+    document.getElementById('date-end').value = `${last.year}-${String(last.month).padStart(2,'0')}-${String(last.day).padStart(2,'0')}`;
+    document.getElementById('schedule-summary').textContent = `${scheduleRangeLabel()} · ${labelForTimeZone(activeTimeZone)}`;
+    document.getElementById('brief-schedule-summary').textContent = `${scheduleRangeLabel()} · ${labelForTimeZone(activeTimeZone)}`;
+  }
+
+  function buildGrid(id, interactive){
+    const container = document.getElementById(id);
+    currentScheduleDates = getScheduleDates(activeTimeZone);
+    updateRangeInputs();
+
+    const shell = document.createElement('div');
+    shell.className = 'schedule-shell';
+
+    const axis = document.createElement('div');
+    axis.className = 'time-axis';
+    const spacer = document.createElement('div');
+    spacer.className = 'axis-spacer';
+    axis.appendChild(spacer);
+
+    for(let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++){
+      const totalMinutes = SLOT_START_HOUR * 60 + slotIndex * SLOT_INTERVAL_MINUTES;
+      const label = document.createElement('div');
+      label.className = 'time-label';
+      label.textContent = formatTimeLabel(Math.floor(totalMinutes / 60), totalMinutes % 60);
+      axis.appendChild(label);
+    }
+
+    const board = document.createElement('div');
+    board.className = 'time-grid';
+
+    currentScheduleDates.forEach(dayInfo => {
+      const header = document.createElement('div');
+      header.className = 'tg-header';
+      header.innerHTML = `<div class="tg-day">${dayInfo.weekday}</div><div class="tg-date">${dayInfo.monthLabel} ${dayInfo.day}</div>`;
+      board.appendChild(header);
+    });
+
+    currentScheduleDates.forEach(dayInfo => {
+      for(let slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++){
+        const totalMinutes = SLOT_START_HOUR * 60 + slotIndex * SLOT_INTERVAL_MINUTES;
+        const hour = Math.floor(totalMinutes / 60);
+        const minute = totalMinutes % 60;
+        const utcDate = zonedDateTimeToUtc(dayInfo.year, dayInfo.month, dayInfo.day, hour, minute, activeTimeZone);
+        const iso = utcDate.toISOString();
+        const slot = document.createElement('div');
+        slot.className = 'time-slot';
+        slot.dataset.utc = iso;
+        slot.title = `${dayInfo.weekday} ${dayInfo.monthLabel} ${dayInfo.day} · ${formatTimeLabel(hour, minute)} (${labelForTimeZone(activeTimeZone)})`;
+        if(selectedUtcSlots.has(iso)){
+          slot.classList.add('selected');
+        }
+        if(interactive){
+          slot.onclick = function(){
+            if(selectedUtcSlots.has(iso)){
+              selectedUtcSlots.delete(iso);
+              this.classList.remove('selected');
+            } else {
+              selectedUtcSlots.add(iso);
+              this.classList.add('selected');
+            }
+          };
+        }
+        board.appendChild(slot);
+      }
+    });
+
+    shell.appendChild(axis);
+    shell.appendChild(board);
+    container.innerHTML = '';
+    container.appendChild(shell);
+  }
+
+  function setActiveTimeZone(nextTimeZone){
+    activeTimeZone = nextTimeZone;
+    ['timezone-select','brief-timezone-select'].forEach(id=>{
+      const select = document.getElementById(id);
+      if(select) select.value = activeTimeZone;
+    });
+    buildGrid('org-grid', !inviteMode);
+    buildGrid('combined-grid', false);
+    updateInviteBanner();
+    paintBriefAvailability();
+  }
+
+  function paintBriefAvailability(){
+    const combSlots=document.querySelectorAll('#combined-grid .time-slot');
+    combSlots.forEach(slot=>{
+      slot.classList.toggle('selected', selectedUtcSlots.has(slot.dataset.utc));
+    });
+  }
 
   function applyModeFromUrl(){
     const params = new URLSearchParams(window.location.search);
@@ -327,7 +551,12 @@
     const duration = params.get('duration');
     const start = params.get('start');
     const end = params.get('end');
+    const timeZone = params.get('tz');
     const avail = params.get('avail');
+    const slots = params.get('slots');
+    if(timeZone){
+      activeTimeZone = timeZone;
+    }
     if(title) document.getElementById('meeting-title').value = title;
     if(start) document.getElementById('date-start').value = start;
     if(end) document.getElementById('date-end').value = end;
@@ -336,15 +565,23 @@
       const match = Array.from(document.querySelectorAll('.vibe-card')).find(card => card.dataset.vibe === vibe);
       if(match) selectVibe(match);
     }
-    if(avail){
-      avail.split(',').filter(Boolean).forEach(idx=>{
-        const slot = document.querySelector(`#org-grid .time-slot[data-idx="${idx}"]`);
-        if(slot) slot.classList.add('selected');
+    if(slots){
+      selectedUtcSlots = new Set(slots.split(',').filter(Boolean));
+    } else if(avail){
+      const pendingIndexes = avail.split(',').filter(Boolean).map(Number);
+      selectedUtcSlots = new Set();
+      buildGrid('org-grid', !inviteMode);
+      pendingIndexes.forEach(idx=>{
+        const slot = document.querySelectorAll('#org-grid .time-slot')[idx];
+        if(slot && slot.dataset.utc){
+          selectedUtcSlots.add(slot.dataset.utc);
+        }
       });
     }
     updateInviteBanner();
     if(mode === 'invite'){
       inviteMode = true;
+      activeTimeZone = browserTimeZone;
       document.body.classList.add('invite-mode');
       document.getElementById('nav-mode').textContent='Invitee view';
       showScreen(2);
@@ -354,17 +591,10 @@
   function updateInviteBanner(){
     const title=document.getElementById('meeting-title').value||'Team meeting';
     const dur=document.getElementById('duration').value;
-    const start=document.getElementById('date-start').value;
-    const end=document.getElementById('date-end').value;
     document.getElementById('banner-title').textContent=title;
     document.getElementById('banner-vibe').textContent=selectedVibe;
     document.getElementById('banner-duration').textContent=dur+' min';
-    const metaBits = [];
-    if(start) metaBits.push(start);
-    if(end && end !== start) metaBits.push(end);
-    if(metaBits.length){
-      document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+metaBits.join(' to ');
-    }
+    document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+scheduleRangeLabel();
   }
 
   function buildInviteLink(){
@@ -372,15 +602,16 @@
     const dur=document.getElementById('duration').value;
     const start=document.getElementById('date-start').value;
     const end=document.getElementById('date-end').value;
-    const avail = Array.from(document.querySelectorAll('#org-grid .time-slot.selected')).map(slot => slot.dataset.idx).join(',');
+    const slots = Array.from(selectedUtcSlots).sort().join(',');
     const url = new URL(window.location.origin + '/the-commons');
     url.searchParams.set('mode','invite');
     url.searchParams.set('title', title);
     url.searchParams.set('vibe', selectedVibe);
     url.searchParams.set('duration', dur);
+    url.searchParams.set('tz', activeTimeZone);
     if(start) url.searchParams.set('start', start);
     if(end) url.searchParams.set('end', end);
-    if(avail) url.searchParams.set('avail', avail);
+    if(slots) url.searchParams.set('slots', slots);
     return url.toString();
   }
 
@@ -440,12 +671,7 @@
     const q6=document.getElementById('q6').value;
 
     document.getElementById('brief-title').textContent=title;
-    const start=document.getElementById('date-start').value;
-    const end=document.getElementById('date-end').value;
-    const metaBits = [];
-    if(start) metaBits.push(start);
-    if(end && end !== start) metaBits.push(end);
-    document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+(metaBits.length ? metaBits.join(' to ') : 'April 2026');
+    document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+scheduleRangeLabel();
     document.getElementById('brief-vibe').textContent=selectedVibe;
 
     const members=[
@@ -499,13 +725,7 @@
       q6?`Ask ${name} what in Axiom Lab feels most alive to Fawaz`:`Ask ${name} what excites Fawaz most about Axiom Lab`
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
-    buildGrid('combined-grid',false);
-    const orgSlots=document.querySelectorAll('#org-grid .time-slot');
-    const combSlots=document.querySelectorAll('#combined-grid .time-slot');
-    combSlots.forEach((slot,i)=>{
-      const oF=orgSlots[i]&&orgSlots[i].classList.contains('selected');
-      if(oF)slot.classList.add('selected');
-    });
+    paintBriefAvailability();
 
     document.getElementById('nav-mode').textContent='Briefing ready';
     showScreen(3);
@@ -523,7 +743,9 @@
     window.scrollTo({top:0,behavior:'smooth'});
   }
 
+  populateTimeZoneSelects();
   applyModeFromUrl();
+  setActiveTimeZone(activeTimeZone);
 </script>
 </body>
 </html>
