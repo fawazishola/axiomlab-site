@@ -147,6 +147,7 @@
   <div class="progress-step active" id="step1"></div>
   <div class="progress-step" id="step2"></div>
   <div class="progress-step" id="step3"></div>
+  <div class="progress-step" id="step4"></div>
 </div>
 <div class="content">
 
@@ -256,21 +257,53 @@
       <textarea class="form-input" id="q4" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 05 of 06</div>
-      <div class="prompt-question">What’s something people might misunderstand about how Fawaz works?</div>
+      <div class="prompt-number">Question 05 of 07</div>
+      <div class="prompt-question">How would you describe Fawaz’s work ethic?</div>
       <textarea class="form-input" id="q5" rows="2" placeholder="Write anything..."></textarea>
     </div>
     <div class="prompt-card">
-      <div class="prompt-number">Question 06 of 06</div>
-      <div class="prompt-question">What do you think excites Fawaz the most about Axiom Lab?</div>
+      <div class="prompt-number">Question 06 of 07</div>
+      <div class="prompt-question">What’s one thing people usually misunderstand about how Fawaz works?</div>
       <textarea class="form-input" id="q6" rows="2" placeholder="Write anything..."></textarea>
     </div>
+    <div class="prompt-card">
+      <div class="prompt-number">Question 07 of 07</div>
+      <div class="prompt-question">What do you think excites Fawaz the most about Axiom Lab?</div>
+      <textarea class="form-input" id="q7" rows="2" placeholder="Write anything..."></textarea>
+    </div>
     <div class="btn-row">
-      <button class="btn-primary" onclick="generateBriefing()">Submit and generate briefing</button>
+      <button class="btn-primary" onclick="showScreen(3)">Continue</button>
     </div>
   </div>
 
   <div class="screen" id="screen-3">
+    <div class="screen-header">
+      <div class="screen-label">Two truths and a lie</div>
+      <h1 class="screen-title">Leave the room with <em>something to guess.</em></h1>
+      <p class="screen-sub">Give us two true things about you and one believable lie. This will be debunked live during the meeting.</p>
+    </div>
+    <div class="prompt-card">
+      <div class="prompt-number">Truth 01</div>
+      <div class="prompt-question">Give us one true thing about you.</div>
+      <textarea class="form-input" id="truth-1" rows="2" placeholder="Make it weird, specific, or funny if you want."></textarea>
+    </div>
+    <div class="prompt-card">
+      <div class="prompt-number">Truth 02</div>
+      <div class="prompt-question">Give us a second true thing about you.</div>
+      <textarea class="form-input" id="truth-2" rows="2" placeholder="Something people probably would not guess right away."></textarea>
+    </div>
+    <div class="prompt-card">
+      <div class="prompt-number">Lie</div>
+      <div class="prompt-question">Give us one believable lie.</div>
+      <textarea class="form-input" id="lie-1" rows="2" placeholder="Believable enough to start a debate."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-ghost" onclick="showScreen(2)">Back</button>
+      <button class="btn-primary" onclick="generateBriefing()">Generate briefing</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-4">
     <div class="screen-header">
       <div class="screen-label">Social briefing</div>
       <h1 class="screen-title">Enter the room <em>already warm.</em></h1>
@@ -289,6 +322,10 @@
       <div class="insight-card"><div class="insight-label">Icebreaker recommendations</div><div class="insight-items" id="icebreakers"></div></div>
       <div class="insight-card"><div class="insight-label">Team chemistry</div><div id="chem-bars"></div></div>
       <div class="insight-card"><div class="insight-label">Things to ask each other</div><div class="insight-items" id="ask-each-other"></div></div>
+    </div>
+    <div class="agenda-card">
+      <div class="insight-label">Two truths and a lie</div>
+      <div class="insight-items" id="truth-lie-items"></div>
     </div>
     <div class="agenda-card">
       <div class="insight-label">Ideal first 10 minutes</div>
@@ -669,6 +706,10 @@
     const q4=document.getElementById('q4').value;
     const q5=document.getElementById('q5').value;
     const q6=document.getElementById('q6').value;
+    const q7=document.getElementById('q7').value;
+    const truth1=document.getElementById('truth-1').value;
+    const truth2=document.getElementById('truth-2').value;
+    const lie1=document.getElementById('lie-1').value;
 
     document.getElementById('brief-title').textContent=title;
     document.getElementById('brief-meta').innerHTML=dur+' min &nbsp;&middot;&nbsp; '+selectedVibe+' &nbsp;&middot;&nbsp; '+scheduleRangeLabel();
@@ -678,19 +719,19 @@
       {name,role:'You - just submitted',facts:[
         {label:'energy',val:trunc(q1,60)},
         {label:'role',val:trunc(q2,60)},
-        {label:'system',val:trunc(q3,60)},
-        {label:'excited',val:trunc(q6,60)}
+        {label:'work ethic',val:trunc(q5,60)},
+        {label:'excited',val:trunc(q7,60)}
       ]},
       {name:'Teammate A',role:'Pending response',facts:[
         {label:'energy',val:'Magnetic'},
         {label:'role',val:'Architect and catalyst'},
-        {label:'system',val:'A compiler wired into a launch sequence'},
+        {label:'work ethic',val:'Relentless once the thesis is clear'},
         {label:'excited',val:'Making impossible systems real'}
       ]},
       {name:'Teammate B',role:'Pending response',facts:[
         {label:'energy',val:'Intense'},
         {label:'role',val:'System-setter'},
-        {label:'system',val:'A control tower with a research engine'},
+        {label:'work ethic',val:'Obsessive in the good way'},
         {label:'excited',val:'Building the full stack for verifiable intelligence'}
       ]}
     ];
@@ -704,13 +745,13 @@
     document.getElementById('convo-starters').innerHTML=[
       q1?`"${trunc(q1,60)}" - where does that energy come from?`:'What is the first word that comes to mind when you think of Fawaz?',
       q3?`"${trunc(q3,60)}" - why that system or machine?`:'If Fawaz were a machine, what would he be and why?',
-      q6?`"${trunc(q6,60)}" - what part of Axiom Lab do you think drives him most?`:'What do you think excites Fawaz most about Axiom Lab?'
+      q7?`"${trunc(q7,60)}" - what part of Axiom Lab do you think drives him most?`:'What do you think excites Fawaz most about Axiom Lab?'
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
     document.getElementById('icebreakers').innerHTML=[
       q2?`Role check - someone said Fawaz is naturally "${trunc(q2,55)}"`:'What role does Fawaz naturally play in a room?',
       q4?`Energy shift - someone noticed "${trunc(q4,55)}"`:'What does he do that changes the energy of a project?',
-      q5?`Misreadings - someone said people misunderstand "${trunc(q5,55)}"`:'What do people misunderstand about how Fawaz works?'
+      q5?`Work ethic - someone described Fawaz as "${trunc(q5,55)}"`:'How would you describe Fawaz’s work ethic?'
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
 
     document.getElementById('chem-bars').innerHTML=[
@@ -720,21 +761,27 @@
     ].map(c=>`<div class="chem-bar"><span class="chem-label">${c.label}</span><div class="chem-track"><div class="chem-fill" style="width:${c.val}%"></div></div><span class="chem-val">${c.val}%</span></div>`).join('');
 
     document.getElementById('ask-each-other').innerHTML=[
-      q5?`Ask ${name}: "${trunc(q5,55)}" - what do people get wrong there?`:`Ask ${name} what people misunderstand about how Fawaz works`,
+      q6?`Ask ${name}: "${trunc(q6,55)}" - what do people get wrong there?`:`Ask ${name} what people usually misunderstand about how Fawaz works`,
       q2?`Ask ${name} why they chose "${trunc(q2,30)}" as Fawaz's natural role`:`Ask ${name} what role Fawaz naturally plays in a room`,
-      q6?`Ask ${name} what in Axiom Lab feels most alive to Fawaz`:`Ask ${name} what excites Fawaz most about Axiom Lab`
+      q7?`Ask ${name} what in Axiom Lab feels most alive to Fawaz`:`Ask ${name} what excites Fawaz most about Axiom Lab`
     ].map(s=>`<div class="insight-item"><div class="insight-dot"></div><span>${s}</span></div>`).join('');
+
+    document.getElementById('truth-lie-items').innerHTML=[
+      truth1 || 'Truth one not answered yet.',
+      truth2 || 'Truth two not answered yet.',
+      lie1 || 'Lie not answered yet.'
+    ].map((item,index)=>`<div class="insight-item"><div class="insight-dot"></div><span><strong>Card ${index + 1}:</strong> ${item}</span></div>`).join('');
 
     paintBriefAvailability();
 
     document.getElementById('nav-mode').textContent='Briefing ready';
-    showScreen(3);
+    showScreen(4);
   }
 
   function showScreen(n){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('screen-'+n).classList.add('active');
-    for(let i=1;i<=3;i++){
+    for(let i=1;i<=4;i++){
       const s=document.getElementById('step'+i);
       if(i<n)s.className='progress-step done';
       else if(i===n)s.className='progress-step active';
